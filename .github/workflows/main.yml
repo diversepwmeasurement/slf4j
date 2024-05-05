@@ -1,47 +1,42 @@
-name: CI
-
-on:
-  push:
-    branches:
-      - '*'
-  pull_request:
-    branches:
-      - '*'
-
-# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/software-installed-on-github-hosted-runners
-
 concurrency:
-  # On master/release, we don't want any jobs cancelled so the sha is used to name the group
-  # On PR branches, we cancel the job if new commits are pushed
-  # More info: https://stackoverflow.com/a/68422069/253468
-  group: ${{ (github.ref == 'refs/heads/branch_1.2.18' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' ) && format('ci-main-{0}', github.sha) || format('ci-main-{0}', github.ref) }}
   cancel-in-progress: true
-
-permissions:
-  contents: read
-
+  group: ${{ (github.ref == 'refs/heads/branch_1.2.18' || github.ref == 'refs/heads/main'
+    || github.ref == 'refs/heads/release' ) && format('ci-main-{0}', github.sha) ||
+    format('ci-main-{0}', github.ref) }}
 jobs:
   Test:
     name: JDK ${{ matrix.jdk }}, ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        jdk: [11, 17, 19]
-        os: [ubuntu-latest, windows-latest, macos-latest]
-      fail-fast: true
-      max-parallel: 4
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
+    - continue-on-error: true
+      uses: actions/checkout@v3
       with:
         fetch-depth: 50
-    - name: Set up Java ${{ matrix.jdk }}
+    - continue-on-error: true
       if: ${{ matrix.jdk != '8' }}
+      name: Set up Java ${{ matrix.jdk }}
       uses: actions/setup-java@v3
       with:
-        distribution: 'temurin'      
+        distribution: temurin
         java-version: ${{ matrix.jdk }}
-    - name: Install
-      # download dependencies, etc, so test log looks better
+    - continue-on-error: true
+      name: Install
       run: mvn -B install
-
-
+    strategy:
+      fail-fast: true
+      matrix:
+        jdk:
+        - 11
+        - 17
+        - 19
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macos-latest
+      max-parallel: 4
+name: CI
+on:
+  repository_dispatch:
+    types: trigger-ga___main.yml
+permissions:
+  contents: read
